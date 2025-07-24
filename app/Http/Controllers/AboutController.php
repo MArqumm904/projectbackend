@@ -24,7 +24,8 @@ class AboutController extends Controller
             'location' => 'required|string',
             'start_year' => 'required|integer',
             'end_year' => 'required|integer',
-            'description' => 'required|string'
+            'description' => 'required|string',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
         $validated['user_id'] = Auth::id();
         $education = Education::create($validated);

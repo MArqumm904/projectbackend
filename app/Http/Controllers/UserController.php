@@ -28,6 +28,14 @@ class UserController extends Controller
             return response()->json(['error' => 'Either email or phone is required.'], 422);
         }
 
+        // Check if email already exists
+        if (!empty($validated['email'])) {
+            $emailExists = User::where('email', $validated['email'])->exists();
+            if ($emailExists) {
+                return response()->json(['error' => 'This email is already registered.'], 422);
+            }
+        }
+
         $userData = [
             'name' => $validated['name'],
             'password' => Hash::make($validated['password']),

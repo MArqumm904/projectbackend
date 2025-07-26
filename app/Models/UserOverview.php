@@ -9,6 +9,7 @@ class UserOverview extends Model
 {
     use HasFactory;
     public $timestamps = false;
+    protected $table = 'user_overview';
     protected $fillable = [
         'user_id',
         'description',

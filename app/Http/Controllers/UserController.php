@@ -97,9 +97,24 @@ class UserController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login successful.',
+            'message' => 'Login successful',
             'token' => $token,
             'user' => $user,
         ]);
+    }
+
+    public function checkAuth(Request $request)
+    {
+        return response()->json([
+            'authenticated' => true,
+            'user' => $request->user(),
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Logged out successfully']);
     }
 }

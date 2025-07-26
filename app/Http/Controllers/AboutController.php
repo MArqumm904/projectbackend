@@ -83,6 +83,35 @@ class AboutController extends Controller
         return response()->json($overview, 201);
     }
 
+    public function getUserOverview($id)
+    {
+
+        $overview = UserOverview::where('user_id', $id)->first();
+
+        if (!$overview) {
+            return response()->json(['message' => 'Overview not found'], 404);
+        }
+
+        return response()->json($overview);
+    }
+    public function updateUserOverview(Request $request, $id)
+    {
+        $overview = UserOverview::where('user_id', $id)->first();
+
+        if (!$overview) {
+            return response()->json(['message' => 'Overview not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'description' => 'required|string',
+        ]);
+
+        $overview->description = $validated['description'];
+        $overview->save();
+
+        return response()->json($overview);
+    }
+    
     // Create UserSkill
     public function createUserSkill(Request $request)
     {
@@ -95,4 +124,5 @@ class AboutController extends Controller
         $skill = UserSkill::create($validated);
         return response()->json($skill, 201);
     }
+
 }

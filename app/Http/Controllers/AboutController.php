@@ -31,6 +31,41 @@ class AboutController extends Controller
         return response()->json($education, 201);
     }
 
+    public function getUserEducation($id)
+    {
+        $education = Education::where('user_id', $id)->get();
+        if (!$education) {
+            return response()->json(['message' => 'Education not found'], 404);
+        }
+        return response()->json($education);
+    }
+
+    public function updateUserEducation(Request $request, $educationId)
+    {
+        $education = Education::find($educationId);
+        if (!$education) {
+            return response()->json(['message' => 'Education not found'], 404);
+        }
+
+        if ($education->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'schooluniname' => 'required|string',
+            'qualification' => 'required|string',
+            'field_of_study' => 'required|string',
+            'location' => 'required|string',
+            'start_year' => 'required|integer',
+            'end_year' => 'required|integer',
+            'description' => 'required|string'
+        ]);
+
+        $education->update($validated);
+
+        return response()->json($education);
+    }
+
     // Create Certification (with image upload)
     public function createCertification(Request $request)
     {
@@ -53,6 +88,46 @@ class AboutController extends Controller
             'certificate_photo' => $imagePath,
         ]);
         return response()->json($certification, 201);
+    }
+
+    public function getUserCertification($id)
+    {
+        $certification = UserCertification::where('user_id', $id)->get();
+        if (!$certification) {
+            return response()->json(['message' => 'Certification not found'], 404);
+        }
+        return response()->json($certification);
+    }
+
+    public function updateUserCertification(Request $request, $certificationId)
+    {
+        $certification = UserCertification::find($certificationId);
+        if (!$certification) {
+            return response()->json(['message' => 'Certification not found'], 404);
+        }
+        if ($certification->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string',
+            'organization' => 'required|string',
+            'start_year' => 'required|integer',
+            'end_year' => 'required|integer',
+            'description' => 'required|string',
+            // certificate_photo is not always required on update
+            'certificate_photo' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        // Handle certificate_photo if present
+        if ($request->hasFile('certificate_photo')) {
+            $imagePath = $request->file('certificate_photo')->store('certificates', 'public');
+            $validated['certificate_photo'] = $imagePath;
+        }
+
+        $certification->update($validated);
+
+        return response()->json($certification);
     }
 
     // Create UserInfo
@@ -111,7 +186,7 @@ class AboutController extends Controller
 
         return response()->json($overview);
     }
-    
+
     // Create UserSkill
     public function createUserSkill(Request $request)
     {
@@ -124,5 +199,4 @@ class AboutController extends Controller
         $skill = UserSkill::create($validated);
         return response()->json($skill, 201);
     }
-
 }

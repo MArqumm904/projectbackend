@@ -10,6 +10,7 @@ class UserCertification extends Model
     use HasFactory;
 
     public $timestamps = false;
+    protected $table = 'user_certification';
     protected $fillable = [
         'user_id',
         'title',

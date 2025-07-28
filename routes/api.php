@@ -42,7 +42,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ============================ ABOUT GET API'S ================================
     Route::get('/about/overview/{id}', [App\Http\Controllers\AboutController::class, 'getUserOverview']);
+    Route::get('/about/education/{id}', [App\Http\Controllers\AboutController::class, 'getUserEducation']);
+    Route::get('/about/certification/{id}', [App\Http\Controllers\AboutController::class, 'getUserCertification']);
+    // ============================ ABOUT UPDATE API'S ================================
     Route::put('/about/overview/{id}', [App\Http\Controllers\AboutController::class, 'updateUserOverview']);
+    Route::put('/about/education/{educationId}', [App\Http\Controllers\AboutController::class, 'updateUserEducation']);
+    Route::put('/about/certification/{certificationId}', [App\Http\Controllers\AboutController::class, 'updateUserCertification']);
 });
 
 

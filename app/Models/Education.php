@@ -9,6 +9,7 @@ class Education extends Model
 {
     use HasFactory;
     public $timestamps = false;
+    protected $table = 'user_education';
     protected $fillable = [
         'user_id',
         'schooluniname',

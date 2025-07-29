@@ -14,7 +14,7 @@ use App\Models\UserSkill;
 
 class AboutController extends Controller
 {
-    // Create Education
+    // ================================== Create Education ==================================
     public function createEducation(Request $request)
     {
         $validated = $request->validate([
@@ -66,7 +66,22 @@ class AboutController extends Controller
         return response()->json($education);
     }
 
-    // Create Certification (with image upload)
+    public function deleteUserEducation($educationId)
+    {
+        $education = Education::find($educationId);
+        if (!$education) {
+            return response()->json(['message' => 'Education not found'], 404);
+        }
+        if ($education->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $education->delete();
+
+        return response()->json(['message' => 'Education deleted successfully']);
+    }
+
+    // ================================== Create Certification ==================================
     public function createCertification(Request $request)
     {
         $validated = $request->validate([
@@ -115,11 +130,9 @@ class AboutController extends Controller
             'start_year' => 'required|integer',
             'end_year' => 'required|integer',
             'description' => 'required|string',
-            // certificate_photo is not always required on update
             'certificate_photo' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Handle certificate_photo if present
         if ($request->hasFile('certificate_photo')) {
             $imagePath = $request->file('certificate_photo')->store('certificates', 'public');
             $validated['certificate_photo'] = $imagePath;
@@ -130,13 +143,36 @@ class AboutController extends Controller
         return response()->json($certification);
     }
 
-    // Create UserInfo
+    public function deleteUserCertification($certificationId)
+    {
+        $certification = UserCertification::find($certificationId);
+        if (!$certification) {
+            return response()->json(['message' => 'Certification not found'], 404);
+        }
+        if ($certification->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $certification->delete();
+
+        return response()->json(['message' => 'Certification deleted successfully']);
+    }
+    // ================================== Create UserInfo ==================================
+    public function getUserInfo($id)
+    {
+        $userInfo = UserInfo::where('user_id', $id)->first();
+        if (!$userInfo) {
+            return response()->json(['message' => 'User info not found'], 404);
+        }
+        return response()->json($userInfo);
+    }
     public function createUserInfo(Request $request)
     {
         $validated = $request->validate([
             'contact' => 'required|string',
             'email' => 'required|email',
-            'languages_spoken' => 'required|string',
+            'languages_spoken' => 'required|array',
+            'languages_spoken.*' => 'string',
             'website' => 'required|string',
             'social_link' => 'required|string',
             'gender' => 'required|string',
@@ -147,7 +183,81 @@ class AboutController extends Controller
         return response()->json($userInfo, 201);
     }
 
-    // Create UserOverview
+    public function updateUserInfo(Request $request, $infoId)
+    {
+        $userInfo = UserInfo::find($infoId);
+        if (!$userInfo) {
+            return response()->json(['message' => 'User info not found'], 404);
+        }
+        if ($userInfo->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'contact' => 'sometimes|nullable|string',
+            'email' => 'sometimes|nullable|email',
+            'website' => 'sometimes|nullable', // Can be array or string
+            'social_link' => 'sometimes|nullable',
+            'gender' => 'sometimes|nullable|string',
+            'date_of_birth' => 'sometimes|nullable|date',
+            'languages_spoken' => 'sometimes|nullable', // Can be array or string
+        ]);
+
+        // Handle array fields that need to be converted to strings
+        $arrayFields = ['languages_spoken', 'website', 'social_link'];
+
+        foreach ($arrayFields as $field) {
+            if ($request->has($field)) {
+                $value = $request->input($field);
+
+                // Debug log
+                error_log("Processing field: $field");
+                error_log("Received value: " . json_encode($value));
+                error_log("Value type: " . gettype($value));
+
+                if (is_array($value)) {
+                    // Convert array to comma-separated string
+                    $stringValue = implode(',', array_filter($value)); // array_filter removes empty values
+                    error_log("Converted to string: " . $stringValue);
+                } else {
+                    $stringValue = (string) $value;
+                }
+
+                // Direct database update
+                $userInfo->$field = $stringValue;
+                error_log("Set $field to: " . $userInfo->$field);
+            }
+        }
+
+        // Handle simple fields (non-array fields)
+        $simpleFields = ['contact', 'email', 'gender', 'date_of_birth'];
+        foreach ($simpleFields as $field) {
+            if ($request->has($field)) {
+                $userInfo->$field = $request->input($field);
+            }
+        }
+
+        // Save all changes
+        $saved = $userInfo->save();
+        error_log("Save result: " . ($saved ? 'SUCCESS' : 'FAILED'));
+
+        if (!$saved) {
+            error_log("Failed to save userInfo model");
+            return response()->json(['message' => 'Failed to save'], 500);
+        }
+
+        return response()->json($userInfo->fresh());
+    }
+
+    public function deleteUserInfo($infoId)
+    {
+        $userInfo = UserInfo::find($infoId);
+        if (!$userInfo) {
+            return response()->json(['message' => 'User info not found'], 404);
+        }
+    }
+
+    // ================================== Create UserOverview ==================================
     public function createUserOverview(Request $request)
     {
         $validated = $request->validate([
@@ -187,7 +297,22 @@ class AboutController extends Controller
         return response()->json($overview);
     }
 
-    // Create UserSkill
+    public function deleteUserOverview($id)
+    {
+        $overview = UserOverview::where('user_id', $id)->first();
+        if (!$overview) {
+            return response()->json(['message' => 'Overview not found'], 404);
+        }
+        if ($overview->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $overview->delete();
+
+        return response()->json(['message' => 'Overview deleted successfully']);
+    }
+
+    // ================================== Create UserSkill ==================================
     public function createUserSkill(Request $request)
     {
         $validated = $request->validate([
@@ -198,5 +323,50 @@ class AboutController extends Controller
         $validated['user_id'] = Auth::id();
         $skill = UserSkill::create($validated);
         return response()->json($skill, 201);
+    }
+
+    public function getUserSkill($id)
+    {
+        $skill = UserSkill::where('user_id', $id)->get();
+        if (!$skill) {
+            return response()->json(['message' => 'Skill not found'], 404);
+        }
+        return response()->json($skill);
+    }
+
+    public function updateUserSkill(Request $request, $skillId)
+    {
+        $skill = UserSkill::find($skillId);
+        if (!$skill) {
+            return response()->json(['message' => 'Skill not found'], 404);
+        }
+        if ($skill->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'skill' => 'required|string',
+            'proficiency' => 'required|string',
+            'description' => 'required|string',
+        ]);
+
+        $skill->update($validated);
+
+        return response()->json($skill);
+    }
+
+    public function deleteUserSkill($skillId)
+    {
+        $skill = UserSkill::find($skillId);
+        if (!$skill) {
+            return response()->json(['message' => 'Skill not found'], 404);
+        }
+        if ($skill->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $skill->delete();
+
+        return response()->json(['message' => 'Skill deleted successfully']);
     }
 }

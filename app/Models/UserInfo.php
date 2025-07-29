@@ -9,14 +9,11 @@ class UserInfo extends Model
 {
     use HasFactory;
     public $timestamps = false;
+    protected $table = 'user_info';
     protected $fillable = [
         'user_id',
-        'contact',
         'email',
-        'languages_spoken',
-        'website',
-        'social_link',
-        'gender',
+        'contact',
         'date_of_birth',
     ];
 }

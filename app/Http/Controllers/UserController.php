@@ -8,6 +8,7 @@ use App\Models\Profile;
 use App\Models\UserSkill;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Models\UserInfo;
 
 class UserController extends Controller
 {
@@ -47,6 +48,14 @@ class UserController extends Controller
             $userData['phone'] = $validated['phone'];
         }
         $user = User::create($userData);
+
+        // Create user_info
+        $userInfo = new UserInfo();
+        $userInfo->user_id = $user->id;
+        $userInfo->email = $user->email ?? null;
+        $userInfo->contact = $user->phone ?? null;
+        $userInfo->date_of_birth = $validated['dob'];
+        $userInfo->save();
 
         // Create profile
         $profile = new Profile();

@@ -36,18 +36,28 @@ Route::get('/ping', function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/about/education', [App\Http\Controllers\AboutController::class, 'createEducation']);
     Route::post('/about/certification', [App\Http\Controllers\AboutController::class, 'createCertification']);
-    Route::post('/about/userinfo', [App\Http\Controllers\AboutController::class, 'createUserInfo']);
+    Route::post('/about/info', [App\Http\Controllers\AboutController::class, 'createUserInfo']);
     Route::post('/about/overview', [App\Http\Controllers\AboutController::class, 'createUserOverview']);
-    Route::post('/about/skill', [App\Http\Controllers\AboutController::class, 'createUserSkill']);
+    Route::post('/about/skills', [App\Http\Controllers\AboutController::class, 'createUserSkill']);
 
     // ============================ ABOUT GET API'S ================================
     Route::get('/about/overview/{id}', [App\Http\Controllers\AboutController::class, 'getUserOverview']);
     Route::get('/about/education/{id}', [App\Http\Controllers\AboutController::class, 'getUserEducation']);
     Route::get('/about/certification/{id}', [App\Http\Controllers\AboutController::class, 'getUserCertification']);
+    Route::get('/about/skills/{id}', [App\Http\Controllers\AboutController::class, 'getUserSkill']);
+    Route::get('/about/info/{id}', [App\Http\Controllers\AboutController::class, 'getUserInfo']);
     // ============================ ABOUT UPDATE API'S ================================
     Route::put('/about/overview/{id}', [App\Http\Controllers\AboutController::class, 'updateUserOverview']);
     Route::put('/about/education/{educationId}', [App\Http\Controllers\AboutController::class, 'updateUserEducation']);
     Route::put('/about/certification/{certificationId}', [App\Http\Controllers\AboutController::class, 'updateUserCertification']);
+    Route::put('/about/skills/{skillId}', [App\Http\Controllers\AboutController::class, 'updateUserSkill']);
+    Route::put('/about/info/{infoId}', [App\Http\Controllers\AboutController::class, 'updateUserInfo']);
+    // ============================ ABOUT DELETE API'S ================================
+    Route::delete('/about/overview/{id}', [App\Http\Controllers\AboutController::class, 'deleteUserOverview']);
+    Route::delete('/about/education/{educationId}', [App\Http\Controllers\AboutController::class, 'deleteUserEducation']);
+    Route::delete('/about/certification/{certificationId}', [App\Http\Controllers\AboutController::class, 'deleteUserCertification']);
+    Route::delete('/about/skills/{skillId}', [App\Http\Controllers\AboutController::class, 'deleteUserSkill']);
+    Route::delete('/about/info/{infoId}', [App\Http\Controllers\AboutController::class, 'deleteUserInfo']);
 });
 
 

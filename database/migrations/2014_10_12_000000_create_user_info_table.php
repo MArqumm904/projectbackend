@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('user_info', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->string('contact');
+            $table->string('contact')->nullable();
             $table->string('email');
             $table->string('languages_spoken');
             $table->string('website')->nullable();

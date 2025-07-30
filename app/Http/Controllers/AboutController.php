@@ -196,40 +196,29 @@ class AboutController extends Controller
         $validated = $request->validate([
             'contact' => 'sometimes|nullable|string',
             'email' => 'sometimes|nullable|email',
-            'website' => 'sometimes|nullable', // Can be array or string
+            'website' => 'sometimes|nullable',
             'social_link' => 'sometimes|nullable',
             'gender' => 'sometimes|nullable|string',
             'date_of_birth' => 'sometimes|nullable|date',
-            'languages_spoken' => 'sometimes|nullable', // Can be array or string
+            'languages_spoken' => 'sometimes|nullable',
         ]);
 
-        // Handle array fields that need to be converted to strings
         $arrayFields = ['languages_spoken', 'website', 'social_link'];
 
         foreach ($arrayFields as $field) {
             if ($request->has($field)) {
                 $value = $request->input($field);
 
-                // Debug log
-                error_log("Processing field: $field");
-                error_log("Received value: " . json_encode($value));
-                error_log("Value type: " . gettype($value));
-
                 if (is_array($value)) {
-                    // Convert array to comma-separated string
-                    $stringValue = implode(',', array_filter($value)); // array_filter removes empty values
-                    error_log("Converted to string: " . $stringValue);
+                    $stringValue = implode(',', array_filter($value));
                 } else {
                     $stringValue = (string) $value;
                 }
 
-                // Direct database update
                 $userInfo->$field = $stringValue;
-                error_log("Set $field to: " . $userInfo->$field);
             }
         }
 
-        // Handle simple fields (non-array fields)
         $simpleFields = ['contact', 'email', 'gender', 'date_of_birth'];
         foreach ($simpleFields as $field) {
             if ($request->has($field)) {
@@ -237,12 +226,9 @@ class AboutController extends Controller
             }
         }
 
-        // Save all changes
         $saved = $userInfo->save();
-        error_log("Save result: " . ($saved ? 'SUCCESS' : 'FAILED'));
 
         if (!$saved) {
-            error_log("Failed to save userInfo model");
             return response()->json(['message' => 'Failed to save'], 500);
         }
 

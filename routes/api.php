@@ -66,7 +66,16 @@ Route::middleware('auth:sanctum')->get('/check-auth', [App\Http\Controllers\User
 
 // ============================ GET USER PROFILE DATA API ================================
 Route::get('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'getProfile']);
+Route::put('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'updateProfile']);    
 
 // ============================ LOGOUT API ================================
 Route::middleware('auth:sanctum')->post('/logout', [App\Http\Controllers\UserController::class, 'logout']);
+
+// ============================ GROUPS API ================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/groups', [App\Http\Controllers\GroupController::class, 'store']);
+    Route::get('/groups', [App\Http\Controllers\GroupController::class, 'show']);
+    Route::put('/groups/{id}', [App\Http\Controllers\GroupController::class, 'update']);
+    Route::delete('/groups/{id}', [App\Http\Controllers\GroupController::class, 'destroy']);
+});
 

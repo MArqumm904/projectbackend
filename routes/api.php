@@ -74,8 +74,11 @@ Route::middleware('auth:sanctum')->post('/logout', [App\Http\Controllers\UserCon
 // ============================ GROUPS API ================================
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/groups', [App\Http\Controllers\GroupController::class, 'store']);
-    Route::get('/groups', [App\Http\Controllers\GroupController::class, 'show']);
-    Route::put('/groups/{id}', [App\Http\Controllers\GroupController::class, 'update']);
+    Route::post('/groups/{groupid}', [App\Http\Controllers\GroupController::class, 'update']);
+    // =================================== GET ONE GROUP ===================================
+    Route::get('/groups/{groupid}', [App\Http\Controllers\GroupController::class, 'show']);
+    // =================================== GET ALL GROUP ===================================
+    Route::get('/groups', [App\Http\Controllers\GroupController::class, 'showall']);
     Route::delete('/groups/{id}', [App\Http\Controllers\GroupController::class, 'destroy']);
 });
 

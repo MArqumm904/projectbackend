@@ -18,7 +18,7 @@ class GroupController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'group_name' => 'required|string|max:255',
+            'group_name' => 'required|string|max:255|unique:groups,group_name',
             'group_description' => 'nullable|string',
             'group_type' => 'required|in:public,private,secret',
             'group_industry' => 'nullable|string|max:255',
@@ -26,7 +26,7 @@ class GroupController extends Controller
             'group_profile_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'group_banner_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-             
+
 
         $validated['group_created_by'] = Auth::id();
 
@@ -37,7 +37,7 @@ class GroupController extends Controller
         }
 
         // Handle banner image upload
-            if ($request->hasFile('group_banner_image')) {
+        if ($request->hasFile('group_banner_image')) {
             $bannerPath = $request->file('group_banner_image')->store('groups/banner_images', 'public');
             $validated['group_banner_image'] = $bannerPath;
         }
@@ -54,16 +54,48 @@ class GroupController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($groupid)
     {
-        $group = Group::with('creator')->find($id);
-        
+        // Authenticated user ki ID
+        $userId = auth()->id();
+
+        // Specific group fetch karein jo current user ne banaya ho
+        $group = Group::with('creator')
+            ->where('id', $groupid)
+            ->where('group_created_by', $userId)
+            ->first();
+
         if (!$group) {
             return response()->json(['message' => 'Group not found'], 404);
         }
 
-        return response()->json($group);
+        return response()->json([
+            'success' => true,
+            'data' => $group
+        ]);
     }
+    public function showall()
+    {
+        // Current authenticated user ki ID get karenge
+        $userId = auth()->id();
+
+        // Groups retrieve karenge jo current user ne create kiye hain
+        $groups = Group::with('creator')
+            ->where('group_created_by', $userId)
+            ->latest()
+            ->get();
+
+        if ($groups->isEmpty()) {
+            return response()->json(['message' => 'No groups found for this user'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $groups,
+            'total' => $groups->count()
+        ]);
+    }
+
 
     /**
      * Update the specified resource in storage.
@@ -72,56 +104,50 @@ class GroupController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $groupid)
     {
-        $group = Group::find($id);
-        
-        if (!$group) {
-            return response()->json(['message' => 'Group not found'], 404);
-        }
+        $group = Group::where('id', $groupid)
+            ->where('group_created_by', Auth::id())
+            ->first();
 
-        // Check if user is the creator of the group
-        if ($group->created_by != Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$group) {
+            return response()->json(['message' => 'No group found to update'], 404);
         }
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'group_type' => 'sometimes|required|in:public,private,secret',
-            'industry' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
+            'group_name' => 'sometimes|required|string|max:255',
+            'group_description' => 'nullable|string',
+            'group_category' => 'nullable|string|max:255',
+            'group_industry' => 'nullable|string|max:255',
             'group_about' => 'nullable|string',
-            'history' => 'nullable|string',
-            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'group_history' => 'nullable|string',
+            'group_profile_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'group_banner_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'is_active' => 'sometimes|boolean',
         ]);
 
-        // Handle profile photo upload
-        if ($request->hasFile('profile_photo')) {
-            // Delete old photo if exists
-            if ($group->profile_photo) {
-                Storage::disk('public')->delete($group->profile_photo);
+        // Handle profile photo
+        if ($request->hasFile('group_profile_photo')) {
+            if ($group->group_profile_photo) {
+                Storage::disk('public')->delete($group->group_profile_photo);
             }
-            $photoPath = $request->file('profile_photo')->store('groups/profile_photos', 'public');
-            $validated['profile_photo'] = $photoPath;
+            $validated['group_profile_photo'] = $request->file('group_profile_photo')->store('groups/profile_photos', 'public');
         }
 
-        // Handle banner image upload
-        if ($request->hasFile('banner_image')) {
-            // Delete old banner if exists
-            if ($group->banner_image) {
-                Storage::disk('public')->delete($group->banner_image);
+        // Handle banner image
+        if ($request->hasFile('group_banner_image')) {
+            if ($group->group_banner_image) {
+                Storage::disk('public')->delete($group->group_banner_image);
             }
-            $bannerPath = $request->file('banner_image')->store('groups/banner_images', 'public');
-            $validated['banner_image'] = $bannerPath;
+            $validated['group_banner_image'] = $request->file('group_banner_image')->store('groups/banner_images', 'public');
         }
 
         $group->update($validated);
-        $group->load('creator');
 
-        return response()->json($group);
+        return response()->json([
+            'success' => true,
+            'message' => 'Group updated successfully.',
+            'data' => $group,
+        ]);
     }
-
 }

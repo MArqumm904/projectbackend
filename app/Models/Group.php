@@ -19,6 +19,7 @@ class Group extends Model
         'group_history',
         'group_profile_photo',
         'group_banner_image',
+        'location',
         'is_active'
     ];
 

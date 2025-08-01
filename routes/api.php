@@ -18,14 +18,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
 // ============================ SIGNUP API ================================
 Route::post('/signup', [App\Http\Controllers\UserController::class, 'signup']);
 
-
 // ============================ LOGIN API ================================
 Route::post('/login', [App\Http\Controllers\UserController::class, 'login']);
-
 
 // ============================ TEST API ============================
 Route::get('/ping', function () {
@@ -60,7 +57,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/about/info/{infoId}', [App\Http\Controllers\AboutController::class, 'deleteUserInfo']);
 });
 
-
 // ============================ CHECK AUTH THAT USER IS LOGGED IN API ================================
 Route::middleware('auth:sanctum')->get('/check-auth', [App\Http\Controllers\UserController::class, 'checkAuth']);
 
@@ -80,6 +76,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/groups/{groupid}', [App\Http\Controllers\GroupController::class, 'show']);
     // =================================== GET ALL GROUP ===================================
     Route::get('/groups', [App\Http\Controllers\GroupController::class, 'showall']);
-    Route::delete('/groups/{id}', [App\Http\Controllers\GroupController::class, 'destroy']);
+    Route::delete('/groups/{groupid}', [App\Http\Controllers\GroupController::class, 'deleteGroupFields']);
 });
-

@@ -120,7 +120,6 @@ class UserProfileController extends Controller
         }
     }
 
-
     public function deleteProfileFields(Request $request, $user_id)
     {
         // Validate that at least one field is provided

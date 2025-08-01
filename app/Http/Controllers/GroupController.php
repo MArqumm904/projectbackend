@@ -22,6 +22,7 @@ class GroupController extends Controller
             'group_description' => 'nullable|string',
             'group_type' => 'required|in:public,private,secret',
             'group_industry' => 'nullable|string|max:255',
+            'location' => 'nullable|string|max:255',
             'group_history' => 'nullable|string',
             'group_profile_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'group_banner_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -96,7 +97,6 @@ class GroupController extends Controller
         ]);
     }
 
-
     /**
      * Update the specified resource in storage.
      *
@@ -123,6 +123,7 @@ class GroupController extends Controller
             'group_history' => 'nullable|string',
             'group_profile_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'group_banner_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'location' => 'nullable|string|max:255',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -149,5 +150,61 @@ class GroupController extends Controller
             'message' => 'Group updated successfully.',
             'data' => $group,
         ]);
+    }
+
+    public function deleteGroupFields(Request $request, $groupid)
+    {
+        // Check if at least one field is requested for deletion
+        if (
+            !$request->filled('group_profile_photo') &&
+            !$request->filled('group_banner_image')
+        ) {
+            return response()->json([
+                'message' => 'No field provided for deletion',
+            ], 422);
+        }
+
+        try {
+            // Get the group created by the current user
+            $group = Group::where('id', $groupid)
+                ->where('group_created_by', Auth::id())
+                ->first();
+
+            if (!$group) {
+                return response()->json(['message' => 'Group not found'], 404);
+            }
+
+            $deletedFields = [];
+
+            // Delete profile photo if requested
+            if ($request->filled('group_profile_photo') && $request->input('group_profile_photo') === 'delete') {
+                if ($group->group_profile_photo && Storage::disk('public')->exists($group->group_profile_photo)) {
+                    Storage::disk('public')->delete($group->group_profile_photo);
+                }
+                $group->group_profile_photo = null;
+                $deletedFields[] = 'group_profile_photo';
+            }
+
+            // Delete banner image if requested
+            if ($request->filled('group_banner_image') && $request->input('group_banner_image') === 'delete') {
+                if ($group->group_banner_image && Storage::disk('public')->exists($group->group_banner_image)) {
+                    Storage::disk('public')->delete($group->group_banner_image);
+                }
+                $group->group_banner_image = null;
+                $deletedFields[] = 'group_banner_image';
+            }
+
+            // Save changes
+            $group->save();
+
+            return response()->json([
+                'message' => 'Selected fields deleted successfully',
+                'deleted_fields' => $deletedFields,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error deleting group fields: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

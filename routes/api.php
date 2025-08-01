@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->get('/check-auth', [App\Http\Controllers\User
 // ============================ GET USER PROFILE DATA API ================================
 Route::get('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'getProfile']);
 Route::post('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'updateProfile']);    
+Route::delete('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'deleteProfileFields']);    
 
 // ============================ LOGOUT API ================================
 Route::middleware('auth:sanctum')->post('/logout', [App\Http\Controllers\UserController::class, 'logout']);

@@ -117,7 +117,7 @@ class GroupController extends Controller
         $validated = $request->validate([
             'group_name' => 'sometimes|required|string|max:255',
             'group_description' => 'nullable|string',
-            'group_category' => 'nullable|string|max:255',
+            'group_type' => 'nullable|string|max:255',
             'group_industry' => 'nullable|string|max:255',
             'group_about' => 'nullable|string',
             'group_history' => 'nullable|string',

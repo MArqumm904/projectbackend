@@ -9,6 +9,8 @@ use App\Models\UserSkill;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\UserInfo;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Friend;
 
 class UserController extends Controller
 {
@@ -126,4 +128,65 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Logged out successfully']);
     }
+    
+public function getrandomusers(Request $request)
+{
+    $userId = Auth::id(); 
+    $limit = $request->input('limit', 10); 
+
+    $friendIds = Friend::where(function ($query) use ($userId) {
+                            $query->where('user_id', $userId)
+                                  ->orWhere('friend_id', $userId);
+                        })
+                        ->get()
+                        ->flatMap(function ($friend) use ($userId) {
+                            return [$friend->user_id, $friend->friend_id];
+                        })
+                        ->unique()
+                        ->filter(fn ($id) => $id != $userId)
+                        ->values();
+
+    $fofIds = Friend::where(function ($query) use ($friendIds) {
+                            $query->whereIn('user_id', $friendIds)
+                                  ->orWhereIn('friend_id', $friendIds);
+                        })
+                        ->get()
+                        ->flatMap(function ($friend) {
+                            return [$friend->user_id, $friend->friend_id];
+                        })
+                        ->unique()
+                        ->filter(fn ($id) => $id != Auth::id() && !$friendIds->contains($id))
+                        ->values();
+
+    $usersFromFof = collect();
+    if ($fofIds->isNotEmpty()) {
+        $usersFromFof = User::whereIn('id', $fofIds)
+                            ->inRandomOrder()
+                            ->take($limit)
+                            ->get();
+    }
+
+    $remaining = $limit - $usersFromFof->count();
+    $usersFromRandom = collect();
+
+    if ($remaining > 0) {
+        $excludedIds = $usersFromFof->pluck('id')
+                        ->merge($friendIds)
+                        ->push($userId);
+
+        $usersFromRandom = User::whereNotIn('id', $excludedIds)
+                               ->inRandomOrder()
+                               ->take($remaining)
+                               ->get();
+    }
+
+    $finalUsers = $usersFromFof->merge($usersFromRandom);
+
+    return response()->json([
+        'status' => true,
+        'users' => $finalUsers
+    ]);
+}
+
+
 }

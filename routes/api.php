@@ -94,8 +94,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/textposts', [App\Http\Controllers\PostController::class, 'storetext']);
 
-    // ========================POST BROWSING API THAT FETCH ONLY 3 POSTS PER REQUEST===================
+    // ======================== POST BROWSING API THAT FETCH ONLY 3 POSTS PER REQUEST===================
     Route::post('/allposts', [App\Http\Controllers\PostController::class, 'getAllPosts']);
+    // ========== POST BROWSING API (IN PROFILE SECTION) THAT FETCH ONLY 3 POSTS PER REQUEST============
+    Route::post('/getauthenticatedposts', [App\Http\Controllers\PostController::class, 'getAllPosts']);
 
     Route::post('/imageposts', [App\Http\Controllers\PostController::class, 'storeimage']);
     Route::post('/videoposts', [App\Http\Controllers\PostController::class, 'storevideo']);

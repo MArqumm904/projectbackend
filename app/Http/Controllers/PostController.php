@@ -168,7 +168,6 @@ class PostController extends Controller
         $fetchedPostIds = $request->input('already_fetched_ids', []);
         $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
 
-        // Get 3 new random posts (excluding fetched IDs & own posts)
         $postsToReturn = Post::with(['user', 'media'])
             ->where('user_id', '!=', $currentUserId)
             ->whereNotIn('id', $fetchedPostIds)
@@ -224,4 +223,5 @@ class PostController extends Controller
 
         return response()->json($response);
     }
+    
 }

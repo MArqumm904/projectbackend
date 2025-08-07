@@ -58,7 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/about/certification/{certificationId}', [App\Http\Controllers\AboutController::class, 'deleteUserCertification']);
     Route::delete('/about/skills/{skillId}', [App\Http\Controllers\AboutController::class, 'deleteUserSkill']);
     Route::delete('/about/info/{infoId}', [App\Http\Controllers\AboutController::class, 'deleteUserInfo']);
-    
+
     // ======================= GET RANDOM USERS ============================================================
     Route::post('/users/getrandomusers', [App\Http\Controllers\UserController::class, 'getrandomusers']);
 });
@@ -68,8 +68,8 @@ Route::middleware('auth:sanctum')->get('/check-auth', [App\Http\Controllers\User
 
 // ============================ GET USER PROFILE DATA API ================================
 Route::get('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'getProfile']);
-Route::post('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'updateProfile']);    
-Route::delete('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'deleteProfileFields']);    
+Route::post('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'updateProfile']);
+Route::delete('/user/profile/{user_id}', [App\Http\Controllers\UserProfileController::class, 'deleteProfileFields']);
 
 // ============================ LOGOUT API ================================
 Route::middleware('auth:sanctum')->post('/logout', [App\Http\Controllers\UserController::class, 'logout']);
@@ -83,6 +83,22 @@ Route::middleware('auth:sanctum')->group(function () {
     // =================================== GET ALL GROUP ===================================
     Route::get('/groups', [App\Http\Controllers\GroupController::class, 'showall']);
     Route::delete('/groups/{groupid}', [App\Http\Controllers\GroupController::class, 'deleteGroupFields']);
+});
+
+// ============================ PAGES API ================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/pages', [App\Http\Controllers\PageController::class, 'store']);
+});
+
+// ============================ POSTS API ================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/textposts', [App\Http\Controllers\PostController::class, 'storetext']);
+
+    // ========================POST BROWSING API THAT FETCH ONLY 3 POSTS PER REQUEST===================
+    Route::get('/allposts', [App\Http\Controllers\PostController::class, 'getAllPosts']);
+    Route::post('/imageposts', [App\Http\Controllers\PostController::class, 'storeimage']);
+    Route::post('/videoposts', [App\Http\Controllers\PostController::class, 'storevideo']);
+    Route::post('/pollposts', [App\Http\Controllers\PollController::class, 'storepoll']);
 });
 
 // ============================ FRIEND REQUEST API ================================

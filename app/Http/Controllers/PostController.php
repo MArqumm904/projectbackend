@@ -158,30 +158,33 @@ class PostController extends Controller
             ]
         ], 201);
     }
+
     public function getAllPosts(Request $request)
     {
-        // Get or initialize the array of already fetched post IDs from session
-        $fetchedPostIds = Session::get('fetched_post_ids', []);
+        $currentUserId = auth()->id();
+        $debugMessages = [];
 
-        // Get all posts that haven't been fetched yet
-        $query = Post::with(['user', 'media'])
-            ->whereNotIn('id', $fetchedPostIds);
+        // Get already fetched IDs from request
+        $fetchedPostIds = $request->input('already_fetched_ids', []);
+        $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
 
-        // Execute the query and shuffle the results
-        $posts = $query->get()->shuffle();
+        // Get 3 new random posts (excluding fetched IDs & own posts)
+        $postsToReturn = Post::with(['user', 'media'])
+            ->where('user_id', '!=', $currentUserId)
+            ->whereNotIn('id', $fetchedPostIds)
+            ->inRandomOrder()
+            ->take(3)
+            ->get();
 
-        // Take only 3 posts
-        $postsToReturn = $posts->take(3);
+        $debugMessages[] = 'Posts returned: ' . $postsToReturn->count();
 
-        // Update the session with newly fetched post IDs
-        $newFetchedIds = $postsToReturn->pluck('id')->toArray();
-        Session::put('fetched_post_ids', array_merge($fetchedPostIds, $newFetchedIds));
-
-        // Categorize posts by type
+        // Prepare response
         $response = [
             'text_posts' => [],
             'image_posts' => [],
-            'video_posts' => []
+            'video_posts' => [],
+            'fetched_ids' => [],
+            'debug' => $debugMessages
         ];
 
         foreach ($postsToReturn as $post) {
@@ -197,8 +200,9 @@ class PostController extends Controller
                 'user' => $post->user,
             ];
 
+            $response['fetched_ids'][] = $post->id;
+
             if ($post->media->isEmpty()) {
-                // Text post
                 $response['text_posts'][] = $postData;
             } else {
                 foreach ($post->media as $media) {
@@ -206,7 +210,7 @@ class PostController extends Controller
                     $mediaPost['media'] = [
                         'id' => $media->id,
                         'type' => $media->type,
-                        'file' => $media->file
+                        'file' => $media->file,
                     ];
 
                     if ($media->type === 'image') {

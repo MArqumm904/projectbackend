@@ -160,7 +160,8 @@ public function getrandomusers(Request $request)
 
     $usersFromFof = collect();
     if ($fofIds->isNotEmpty()) {
-        $usersFromFof = User::whereIn('id', $fofIds)
+        $usersFromFof = User::with('profile') // Include profile relationship
+                            ->whereIn('id', $fofIds)
                             ->inRandomOrder()
                             ->take($limit)
                             ->get();
@@ -174,7 +175,8 @@ public function getrandomusers(Request $request)
                         ->merge($friendIds)
                         ->push($userId);
 
-        $usersFromRandom = User::whereNotIn('id', $excludedIds)
+        $usersFromRandom = User::with('profile') // Include profile relationship
+                               ->whereNotIn('id', $excludedIds)
                                ->inRandomOrder()
                                ->take($remaining)
                                ->get();

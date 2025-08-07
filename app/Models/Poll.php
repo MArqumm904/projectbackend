@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Poll extends Model
 {
     protected $fillable = ['post_id', 'question', 'options'];
-
+    protected $table = 'polls';
     protected $casts = [
         'options' => 'array',
     ];
@@ -22,5 +22,4 @@ class Poll extends Model
     {
         return $this->hasMany(PollVote::class);
     }
-    
 }

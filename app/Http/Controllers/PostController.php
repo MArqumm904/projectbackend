@@ -168,8 +168,91 @@ class PostController extends Controller
         $fetchedPostIds = $request->input('already_fetched_ids', []);
         $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
 
-        $postsToReturn = Post::with(['user', 'media'])
+        $postsToReturn = Post::with(['user', 'media', 'poll'])
             ->where('user_id', '!=', $currentUserId)
+            ->whereNotIn('id', $fetchedPostIds)
+            ->inRandomOrder()
+            ->take(3)
+            ->get();
+
+        $debugMessages[] = 'Posts returned: ' . $postsToReturn->count();
+
+        // Prepare response
+        $response = [
+            'text_posts' => [],
+            'image_posts' => [],
+            'video_posts' => [],
+            'poll_posts' => [],
+            'fetched_ids' => [],
+            'debug' => $debugMessages
+        ];
+
+        foreach ($postsToReturn as $post) {
+            $postData = [
+                'id' => $post->id,
+                'user_id' => $post->user_id,
+                'page_id' => $post->page_id,
+                'group_id' => $post->group_id,
+                'content' => $post->content,
+                'type' => $post->type,
+                'visibility' => $post->visibility,
+                'created_at' => $post->created_at,
+                'updated_at' => $post->updated_at,
+                'user' => $post->user,
+            ];
+
+            $response['fetched_ids'][] = $post->id;
+
+            // Handle poll posts
+            if ($post->type === 'poll' && $post->poll) {
+                $pollData = $postData;
+                $pollData['poll'] = [
+                    'id' => $post->poll->id,
+                    'question' => $post->poll->question,
+                    'options' => json_decode($post->poll->options, true), // Decode JSON options
+                    'created_at' => $post->poll->created_at,
+                    'updated_at' => $post->poll->updated_at,
+                ];
+                $response['poll_posts'][] = $pollData;
+            }
+            // Handle media posts (image/video)
+            elseif (!$post->media->isEmpty()) {
+                foreach ($post->media as $media) {
+                    $mediaPost = $postData;
+                    $mediaPost['media'] = [
+                        'id' => $media->id,
+                        'type' => $media->type,
+                        'file' => $media->file,
+                    ];
+
+                    if ($media->type === 'image') {
+                        $response['image_posts'][] = $mediaPost;
+                    } elseif ($media->type === 'video') {
+                        $response['video_posts'][] = $mediaPost;
+                    }
+                }
+            }
+            // Handle text posts (no media, not poll)
+            else {
+                $response['text_posts'][] = $postData;
+            }
+        }
+
+        return response()->json($response);
+    }
+    
+    public function getauthenticatedPosts(Request $request)
+    {
+        $currentUserId = auth()->id();
+        $debugMessages = [];
+
+        // Get already fetched IDs from request
+        $fetchedPostIds = $request->input('already_fetched_ids', []);
+        $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
+
+        // Fetch only current user's posts
+        $postsToReturn = Post::with(['user', 'media'])
+            ->where('user_id', $currentUserId) // Only current user's posts
             ->whereNotIn('id', $fetchedPostIds)
             ->inRandomOrder()
             ->take(3)
@@ -223,5 +306,4 @@ class PostController extends Controller
 
         return response()->json($response);
     }
-    
 }

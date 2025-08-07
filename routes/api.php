@@ -97,11 +97,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // ======================== POST BROWSING API THAT FETCH ONLY 3 POSTS PER REQUEST===================
     Route::post('/allposts', [App\Http\Controllers\PostController::class, 'getAllPosts']);
     // ========== POST BROWSING API (IN PROFILE SECTION) THAT FETCH ONLY 3 POSTS PER REQUEST============
-    Route::post('/getauthenticatedposts', [App\Http\Controllers\PostController::class, 'getAllPosts']);
-
+    Route::post('/getauthenticatedposts', [App\Http\Controllers\PostController::class, 'getauthenticatedPosts']);
     Route::post('/imageposts', [App\Http\Controllers\PostController::class, 'storeimage']);
     Route::post('/videoposts', [App\Http\Controllers\PostController::class, 'storevideo']);
+    // ========================== POST POLL API's ==============================================
     Route::post('/pollposts', [App\Http\Controllers\PollController::class, 'storepoll']);
+
 });
 
 // ============================ FRIEND REQUEST API ================================

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MessageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -113,4 +114,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/friends/received', [App\Http\Controllers\FriendController::class, 'receivedRequests']);
     Route::get('/friends/sent', [App\Http\Controllers\FriendController::class, 'sentRequests']);
     Route::get('/friends', [App\Http\Controllers\FriendController::class, 'getFriends']);
+    Route::get('/friends/search', [App\Http\Controllers\UserController::class, 'search']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/messages/{friendId}', [MessageController::class, 'getMessages']);
+    Route::post('/messages', [MessageController::class, 'sendMessage']);
 });

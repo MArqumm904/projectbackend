@@ -190,5 +190,30 @@ public function getrandomusers(Request $request)
     ]);
 }
 
+public function search(Request $request)
+    {
+        $request->validate([
+            'q' => 'nullable|string|max:255',
+            'limit' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $query = $request->input('q', '');
+        $limit = (int) $request->input('limit', 10);
+
+        $users = User::query()
+            ->where('id', '!=', $request->user()->id)
+            ->when($query !== '', function ($q) use ($query) {
+                $q->where(function ($sub) use ($query) {
+                    $sub->where('name', 'like', "%{$query}%")
+                        ->orWhere('email', 'like', "%{$query}%");
+                });
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get(['id', 'name']);
+
+        return response()->json($users);
+    }
+
 
 }

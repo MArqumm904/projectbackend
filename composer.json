@@ -8,10 +8,10 @@
         "php": "^8.0.2",
         "doctrine/dbal": "3.4",
         "guzzlehttp/guzzle": "^7.2",
+        "kreait/firebase-php": "7.0",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7"
-        
     },
     "conflict": {
         "carbonphp/carbon-doctrine-types": "*"

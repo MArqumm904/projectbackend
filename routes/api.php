@@ -103,7 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/videoposts', [App\Http\Controllers\PostController::class, 'storevideo']);
     // ========================== POST POLL API's ==============================================
     Route::post('/pollposts', [App\Http\Controllers\PollController::class, 'storepoll']);
-
+    Route::post('/postsreactions', [App\Http\Controllers\PostController::class, 'storereaction']);
 });
 
 // ============================ FRIEND REQUEST API ================================

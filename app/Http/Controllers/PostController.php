@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Media;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use App\Models\Like;
 
 class PostController extends Controller
 {
@@ -168,6 +170,15 @@ class PostController extends Controller
         $fetchedPostIds = $request->input('already_fetched_ids', []);
         $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
 
+        // 🆕 NEW: Get authenticated user's recent posts (within last 5 minutes)
+        $recentUserPosts = Post::with(['user', 'media', 'poll'])
+            ->where('user_id', $currentUserId)
+            ->where('created_at', '>=', now()->subSeconds(30))
+            ->whereNotIn('id', $fetchedPostIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Original query for other users' posts
         $postsToReturn = Post::with(['user', 'media', 'poll'])
             ->where('user_id', '!=', $currentUserId)
             ->whereNotIn('id', $fetchedPostIds)
@@ -175,7 +186,11 @@ class PostController extends Controller
             ->take(3)
             ->get();
 
-        $debugMessages[] = 'Posts returned: ' . $postsToReturn->count();
+        // 🆕 NEW: Combine posts - recent user posts first, then others
+        $allPosts = $recentUserPosts->concat($postsToReturn);
+
+        $debugMessages[] = 'Recent user posts: ' . $recentUserPosts->count();
+        $debugMessages[] = 'Other posts returned: ' . $postsToReturn->count();
 
         // Prepare response
         $response = [
@@ -187,7 +202,26 @@ class PostController extends Controller
             'debug' => $debugMessages
         ];
 
-        foreach ($postsToReturn as $post) {
+        // 🆕 Optimized: Get all reactions in ONE query
+        $postIds = $allPosts->pluck('id');
+        $allReactions = Like::whereIn('post_id', $postIds)
+            ->selectRaw('post_id, reaction_type, COUNT(*) as count')
+            ->groupBy('post_id', 'reaction_type')
+            ->get()
+            ->groupBy('post_id');
+
+        $userReactions = Like::whereIn('post_id', $postIds)
+            ->where('user_id', $currentUserId)
+            ->pluck('reaction_type', 'post_id');
+
+        // Loop through all posts
+        foreach ($allPosts as $post) {
+            // 🆕 Get reaction counts for this post
+            $reactionData = isset($allReactions[$post->id]) ? $allReactions[$post->id] : collect();
+            $reactionsCount = $reactionData->pluck('count', 'reaction_type');
+            $totalReactions = $reactionsCount->sum();
+            $userReaction = $userReactions[$post->id] ?? null;
+
             $postData = [
                 'id' => $post->id,
                 'user_id' => $post->user_id,
@@ -199,6 +233,12 @@ class PostController extends Controller
                 'created_at' => $post->created_at,
                 'updated_at' => $post->updated_at,
                 'user' => $post->user,
+                'is_current_user' => $post->user_id === $currentUserId,
+
+                // 🆕 Added Reactions Info
+                'reactions_count' => $reactionsCount,
+                'total_reactions' => $totalReactions,
+                'current_user_reaction' => $userReaction
             ];
 
             $response['fetched_ids'][] = $post->id;
@@ -209,7 +249,7 @@ class PostController extends Controller
                 $pollData['poll'] = [
                     'id' => $post->poll->id,
                     'question' => $post->poll->question,
-                    'options' => json_decode($post->poll->options, true), // Decode JSON options
+                    'options' => json_decode($post->poll->options, true),
                     'created_at' => $post->poll->created_at,
                     'updated_at' => $post->poll->updated_at,
                 ];
@@ -224,7 +264,6 @@ class PostController extends Controller
                         'type' => $media->type,
                         'file' => $media->file,
                     ];
-
                     if ($media->type === 'image') {
                         $response['image_posts'][] = $mediaPost;
                     } elseif ($media->type === 'video') {
@@ -232,7 +271,7 @@ class PostController extends Controller
                     }
                 }
             }
-            // Handle text posts (no media, not poll)
+            // Handle text posts
             else {
                 $response['text_posts'][] = $postData;
             }
@@ -240,7 +279,36 @@ class PostController extends Controller
 
         return response()->json($response);
     }
-    
+
+    public function storereaction(Request $request)
+    {
+        // ✅ Validate request
+        $request->validate([
+            'post_id' => 'required|integer|exists:posts,id',
+            'reaction_type' => 'required|in:like,love,haha,wow,sad,angry'
+        ]);
+
+        $userId = Auth::id();
+
+        // ✅ Save or update reaction
+        $reaction = Like::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'post_id' => $request->post_id
+            ],
+            [
+                'reaction_type' => $request->reaction_type,
+                'created_at' => now()
+            ]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Reaction saved successfully',
+            'data' => $reaction
+        ]);
+    }
+
     public function getauthenticatedPosts(Request $request)
     {
         $currentUserId = auth()->id();

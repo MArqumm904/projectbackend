@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Media;
+use App\Models\Comment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Session;
 
@@ -305,5 +306,141 @@ class PostController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    public function getcomments(Request $request)
+    {
+        $postId = $request->input('post_id');
+
+        // Root comments (parent_id = null)
+        $comments = Comment::where('post_id', $postId)
+            ->whereNull('parent_id')
+            ->with(['user:id,name,email', 'replies.user:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $comments
+        ]);
+    }
+
+    public function storecomment(Request $request)
+    {
+        // Get authenticated user ID
+        $userId = auth()->id(); // or Auth::id()
+
+        // Validation (no need to validate user_id anymore)
+        $request->validate([
+            'post_id' => 'required|integer',
+            'content' => 'required|string',
+            'parent_id' => 'nullable|integer'
+        ]);
+
+        // Create new comment
+        $comment = Comment::create([
+            'post_id'     => $request->post_id,
+            'user_id'     => $userId,
+            'parent_id'   => $request->parent_id, // null if root comment
+            'content'     => $request->content,
+            'likes_count' => 0
+        ]);
+
+        $comment->load('user:id,name');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comment added successfully',
+            'data'    => $comment
+        ]);
+    }
+
+    public function storereply(Request $request)
+    {
+        // Validation
+        $request->validate([
+            'post_id'   => 'required|integer',
+            'user_id'   => 'required|integer',
+            'parent_id' => 'required|integer',
+            'content'   => 'required|string'
+        ]);
+
+        // Reply create
+        $reply = Comment::create([
+            'post_id'     => $request->post_id,
+            'user_id'     => $request->user_id,
+            'parent_id'   => $request->parent_id,
+            'content'     => $request->content,
+            'likes_count' => 0
+        ]);
+
+        // Reply ka user load karke bhej do
+        $reply->load('user:id,name');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reply added successfully',
+            'data'    => $reply
+        ]);
+    }
+
+    public function likeacomment(Request $request)
+    {
+        try {
+            $request->validate([
+                'comment_id' => 'required|integer|exists:comments,id'
+            ]);
+
+            $commentId = $request->comment_id;
+            $userId = auth()->id();
+
+            $comment = Comment::find($commentId);
+
+            if (!$comment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Comment not found'
+                ], 404);
+            }
+
+            $likedByUsers = $comment->liked_by_users ? json_decode($comment->liked_by_users, true) : [];
+
+            if (($key = array_search($userId, $likedByUsers)) !== false) {
+                unset($likedByUsers[$key]);
+                $likedByUsers = array_values($likedByUsers);
+                $comment->decrement('likes_count');
+                $action = 'unliked';
+            } else {
+                $likedByUsers[] = $userId;
+                $comment->increment('likes_count');
+                $action = 'liked';
+            }
+
+            $comment->update([
+                'liked_by_users' => json_encode($likedByUsers)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Comment {$action} successfully",
+                'data' => [
+                    'comment_id' => $commentId,
+                    'new_likes_count' => $comment->likes_count,
+                    'user_liked' => $action === 'liked',
+                ]
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

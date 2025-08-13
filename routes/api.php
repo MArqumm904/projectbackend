@@ -1,3 +1,4 @@
+
 <?php
 
 use App\Http\Controllers\MessageController;
@@ -103,7 +104,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/videoposts', [App\Http\Controllers\PostController::class, 'storevideo']);
     // ========================== POST POLL API's ==============================================
     Route::post('/pollposts', [App\Http\Controllers\PollController::class, 'storepoll']);
-
+    Route::post('/postsreactions', [App\Http\Controllers\PostController::class, 'storereaction']);
+    Route::post('/getcommentsreplies', [App\Http\Controllers\PostController::class, 'getcomments']);
+    Route::post('/storecommentsreplies', [App\Http\Controllers\PostController::class, 'storecomment']);
+    Route::post('/storereply', [App\Http\Controllers\PostController::class, 'storereply']);
+    Route::post('/likeacomment', [App\Http\Controllers\PostController::class, 'likeacomment']);
 });
 
 // ============================ FRIEND REQUEST API ================================

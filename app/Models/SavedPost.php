@@ -5,18 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Post extends Model
+class SavedPost extends Model
 {
     use HasFactory;
 
-    protected $table = 'posts';
+    protected $table = 'saved_posts';
+    public $timestamps = false;
     protected $fillable = [
         'user_id',
-        'page_id',
-        'group_id',
-        'content',
-        'type',
-        'visibility',
+        'post_id',
+        'created_at',
     ];
 
     public function user()
@@ -24,14 +22,14 @@ class Post extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function post()
+    {
+        return $this->belongsTo(Post::class);
+    }
+
     public function media()
     {
         return $this->hasMany(Media::class);
-    }
-
-    public function savedPosts()
-    {
-        return $this->hasMany(SavedPost::class, 'post_id');
     }
 
     public function poll()

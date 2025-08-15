@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\SavedPost;
 use App\Models\Media;
 use App\Models\Comment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Session;
+use App\Models\Like;
+
 
 class PostController extends Controller
 {
@@ -169,6 +172,15 @@ class PostController extends Controller
         $fetchedPostIds = $request->input('already_fetched_ids', []);
         $debugMessages[] = 'Fetched from request: ' . json_encode($fetchedPostIds);
 
+        // 🆕 NEW: Get authenticated user's recent posts (within last 5 minutes)
+        $recentUserPosts = Post::with(['user', 'media', 'poll'])
+            ->where('user_id', $currentUserId)
+            ->where('created_at', '>=', now()->subSeconds(30))
+            ->whereNotIn('id', $fetchedPostIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Original query for other users' posts
         $postsToReturn = Post::with(['user', 'media', 'poll'])
             ->where('user_id', '!=', $currentUserId)
             ->whereNotIn('id', $fetchedPostIds)
@@ -176,7 +188,11 @@ class PostController extends Controller
             ->take(3)
             ->get();
 
-        $debugMessages[] = 'Posts returned: ' . $postsToReturn->count();
+        // 🆕 NEW: Combine posts - recent user posts first, then others
+        $allPosts = $recentUserPosts->concat($postsToReturn);
+
+        $debugMessages[] = 'Recent user posts: ' . $recentUserPosts->count();
+        $debugMessages[] = 'Other posts returned: ' . $postsToReturn->count();
 
         // Prepare response
         $response = [
@@ -188,7 +204,26 @@ class PostController extends Controller
             'debug' => $debugMessages
         ];
 
-        foreach ($postsToReturn as $post) {
+        // 🆕 Optimized: Get all reactions in ONE query
+        $postIds = $allPosts->pluck('id');
+        $allReactions = Like::whereIn('post_id', $postIds)
+            ->selectRaw('post_id, reaction_type, COUNT(*) as count')
+            ->groupBy('post_id', 'reaction_type')
+            ->get()
+            ->groupBy('post_id');
+
+        $userReactions = Like::whereIn('post_id', $postIds)
+            ->where('user_id', $currentUserId)
+            ->pluck('reaction_type', 'post_id');
+
+        // Loop through all posts
+        foreach ($allPosts as $post) {
+            // 🆕 Get reaction counts for this post
+            $reactionData = isset($allReactions[$post->id]) ? $allReactions[$post->id] : collect();
+            $reactionsCount = $reactionData->pluck('count', 'reaction_type');
+            $totalReactions = $reactionsCount->sum();
+            $userReaction = $userReactions[$post->id] ?? null;
+
             $postData = [
                 'id' => $post->id,
                 'user_id' => $post->user_id,
@@ -200,6 +235,12 @@ class PostController extends Controller
                 'created_at' => $post->created_at,
                 'updated_at' => $post->updated_at,
                 'user' => $post->user,
+                'is_current_user' => $post->user_id === $currentUserId,
+
+                // 🆕 Added Reactions Info
+                'reactions_count' => $reactionsCount,
+                'total_reactions' => $totalReactions,
+                'current_user_reaction' => $userReaction
             ];
 
             $response['fetched_ids'][] = $post->id;
@@ -210,7 +251,7 @@ class PostController extends Controller
                 $pollData['poll'] = [
                     'id' => $post->poll->id,
                     'question' => $post->poll->question,
-                    'options' => json_decode($post->poll->options, true), // Decode JSON options
+                    'options' => json_decode($post->poll->options, true),
                     'created_at' => $post->poll->created_at,
                     'updated_at' => $post->poll->updated_at,
                 ];
@@ -225,7 +266,6 @@ class PostController extends Controller
                         'type' => $media->type,
                         'file' => $media->file,
                     ];
-
                     if ($media->type === 'image') {
                         $response['image_posts'][] = $mediaPost;
                     } elseif ($media->type === 'video') {
@@ -233,7 +273,7 @@ class PostController extends Controller
                     }
                 }
             }
-            // Handle text posts (no media, not poll)
+            // Handle text posts
             else {
                 $response['text_posts'][] = $postData;
             }
@@ -241,7 +281,7 @@ class PostController extends Controller
 
         return response()->json($response);
     }
-    
+
     public function getauthenticatedPosts(Request $request)
     {
         $currentUserId = auth()->id();
@@ -311,18 +351,67 @@ class PostController extends Controller
     public function getcomments(Request $request)
     {
         $postId = $request->input('post_id');
+        $userId = auth()->id();
+
+        // Pehle check karo post saved hai ya nahi
+        $isSaved = SavedPost::where('post_id', $postId)
+            ->where('user_id', $userId)
+            ->exists();
 
         // Root comments (parent_id = null)
         $comments = Comment::where('post_id', $postId)
             ->whereNull('parent_id')
-            ->with(['user:id,name,email', 'replies.user:id,name'])
+            ->with([
+                'user:id,name,email',
+                'replies.user:id,name'
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Har comment me saved_post add karo
+        $comments->transform(function ($comment) use ($isSaved) {
+            $comment->saved_post = $isSaved ? 'saved' : 'not_saved';
+            return $comment;
+        });
+
+        // Agar comments empty hain to bhi saved_post ka status wapas bhejo
+        if ($comments->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'saved_post' => $isSaved ? 'saved' : 'not_saved'
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'data' => $comments
         ]);
+    }
+
+    public function storereaction(Request $request)
+    {
+        $validated = $request->validate([
+            'post_id' => 'required|exists:posts,id',
+            'reaction_type' => 'required|string|max:50',
+        ]);
+
+        $userId = auth()->id();
+
+        $reaction = Like::updateOrCreate(
+            [
+                'post_id' => $validated['post_id'],
+                'user_id' => $userId,
+            ],
+            [
+                'reaction_type' => $validated['reaction_type'],
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Reaction stored successfully',
+            'data' => $reaction
+        ], 201);
     }
 
     public function storecomment(Request $request)
@@ -442,5 +531,116 @@ class PostController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function savedapost(Request $request)
+    {
+        try {
+            // Validation
+            $request->validate([
+                'post_id' => 'required|integer'
+            ]);
+
+            $userId = auth()->id();
+            $postId = $request->post_id;
+
+            // Check if already saved
+            $savedPost = SavedPost::where('user_id', $userId)
+                ->where('post_id', $postId)
+                ->first();
+
+            if ($savedPost) {
+                // If exists → delete
+                $savedPost->delete();
+                $action = 'unsaved';
+            } else {
+                // If not exists → create
+                SavedPost::create([
+                    'user_id'    => $userId,
+                    'post_id'    => $postId,
+                    'created_at' => now(),
+                ]);
+                $action = 'saved';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Post {$action} successfully",
+                'data' => [
+                    'post_id' => $postId,
+                    'user_saved' => $action === 'saved'
+                ]
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getSavedPosts(Request $request)
+    {
+        $currentUserId = auth()->id();
+
+        // 1️⃣ Fetch saved_posts with post and saved_by_user relationships
+        $savedPosts = SavedPost::with([
+            'post.user',    // post ka owner
+            'post.media',   // post ka media
+            'post.poll',    // poll data agar hai
+            'user'          // jis user ne save kiya
+        ])
+            ->where('user_id', $currentUserId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 2️⃣ Prepare response
+        $response = [];
+
+        foreach ($savedPosts as $savedPost) {
+            $post = $savedPost->post;
+
+            // Reactions
+            $allReactions = Like::where('post_id', $post->id)
+                ->selectRaw('reaction_type, COUNT(*) as count')
+                ->groupBy('reaction_type')
+                ->pluck('count', 'reaction_type');
+
+            $userReaction = Like::where('post_id', $post->id)
+                ->where('user_id', $currentUserId)
+                ->value('reaction_type');
+
+            $response[] = [
+                'saved_post' => [
+                    'id' => $savedPost->id,
+                    'saved_at' => $savedPost->created_at,
+                    'saved_by' => $savedPost->user, // jis user ne save kiya
+                ],
+                'post' => [
+                    'id' => $post->id,
+                    'user' => $post->user, // post ka owner
+                    'content' => $post->content,
+                    'type' => $post->type,
+                    'visibility' => $post->visibility,
+                    'created_at' => $post->created_at,
+                    'updated_at' => $post->updated_at,
+                    'media' => $post->media,
+                    'poll' => $post->poll,
+                    'reactions_count' => $allReactions,
+                    'total_reactions' => $allReactions->sum(),
+                    'current_user_reaction' => $userReaction,
+                    'is_current_user' => $post->user_id === $currentUserId
+                ]
+            ];
+        }
+
+        return response()->json($response);
     }
 }

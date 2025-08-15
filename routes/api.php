@@ -109,6 +109,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/storecommentsreplies', [App\Http\Controllers\PostController::class, 'storecomment']);
     Route::post('/storereply', [App\Http\Controllers\PostController::class, 'storereply']);
     Route::post('/likeacomment', [App\Http\Controllers\PostController::class, 'likeacomment']);
+    Route::post('/savedapost', [App\Http\Controllers\PostController::class, 'savedapost']);
+    Route::post('/getsavedposts', [App\Http\Controllers\PostController::class, 'getsavedposts']);
 });
 
 // ============================ FRIEND REQUEST API ================================

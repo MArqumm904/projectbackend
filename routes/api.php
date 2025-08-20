@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\MessageController;
@@ -127,4 +126,16 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{friendId}', [MessageController::class, 'getMessages']);
     Route::post('/messages', [MessageController::class, 'sendMessage']);
+});
+
+
+
+// ============================ STORIES API ================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/stories/text', [App\Http\Controllers\StoryController::class, 'createTextStory']);
+    Route::post('/stories/image', [App\Http\Controllers\StoryController::class, 'createImageStory']);
+    Route::post('/stories/postimage', [App\Http\Controllers\StoryController::class, 'createPostImageStory']);
+    Route::post('/stories/posttext', [App\Http\Controllers\StoryController::class, 'createPostTextStory']);
+    Route::post('/stories/postvideo', [App\Http\Controllers\StoryController::class, 'createPostVideoStory']);
+    Route::get('/stories', [App\Http\Controllers\StoryController::class, 'getFriendsStories']);
 });

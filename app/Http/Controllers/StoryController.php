@@ -16,7 +16,6 @@ class StoryController extends Controller
 {
     public function createTextStory(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
             'text_elements' => 'required|array|min:1',
             'text_elements.*.text_content' => 'required|string|max:500',
@@ -36,14 +35,12 @@ class StoryController extends Controller
         }
 
         try {
-            // Create the main story
             $story = Story::create([
                 'user_id' => Auth::id(),
                 'type' => 'text',
                 'duration' => $request->duration ?? 5,
             ]);
 
-            // Create story text elements
             foreach ($request->text_elements as $index => $textElement) {
                 StoryText::create([
                     'story_id' => $story->id,
@@ -76,7 +73,6 @@ class StoryController extends Controller
 
     public function createImageStory(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:10240',
             'text_elements' => 'nullable|json',
@@ -117,11 +113,9 @@ class StoryController extends Controller
                 'scale' => $request->scale ?? 0,
             ]);
 
-            // Create story text elements if any
             if ($request->text_elements) {
                 $textElements = json_decode($request->text_elements, true);
 
-                // Validate each text element
                 $textValidator = Validator::make($textElements, [
                     '*.text_content' => 'required|string|max:500',
                     '*.x_position' => 'nullable|numeric|min:0',
@@ -172,7 +166,6 @@ class StoryController extends Controller
 
     public function createPostImageStory(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|integer|exists:posts,id',
             'text_elements' => 'nullable|array',
@@ -196,7 +189,6 @@ class StoryController extends Controller
         }
 
         try {
-            // Create the main story
             $story = Story::create([
                 'user_id' => Auth::id(),
                 'type' => 'postimage',
@@ -207,7 +199,6 @@ class StoryController extends Controller
                 'scale' => $request->scale ?? 1,
             ]);
 
-            // Create story text elements if any
             if ($request->has('text_elements') && is_array($request->text_elements)) {
                 foreach ($request->text_elements as $index => $textElement) {
                     StoryText::create([
@@ -242,7 +233,6 @@ class StoryController extends Controller
 
     public function createPostTextStory(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|integer|exists:posts,id',
             'content' => 'required|string|max:1000',
@@ -265,7 +255,6 @@ class StoryController extends Controller
         }
 
         try {
-            // Create the main story
             $story = Story::create([
                 'user_id' => Auth::id(),
                 'type' => 'posttext',
@@ -274,7 +263,6 @@ class StoryController extends Controller
                 'duration' => $request->duration ?? 5,
             ]);
 
-            // Create story text elements if any
             if ($request->has('text_elements') && is_array($request->text_elements)) {
                 foreach ($request->text_elements as $index => $textElement) {
                     StoryText::create([
@@ -309,7 +297,6 @@ class StoryController extends Controller
 
     public function createPostVideoStory(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
             'post_id' => 'required|integer|exists:posts,id',
             'text_elements' => 'nullable|array',
@@ -333,7 +320,6 @@ class StoryController extends Controller
         }
 
         try {
-            // Create the main story
             $story = Story::create([
                 'user_id' => Auth::id(),
                 'type' => 'postvideo',
@@ -344,7 +330,6 @@ class StoryController extends Controller
                 'scale' => $request->scale ?? 1,
             ]);
 
-            // Create story text elements if any
             if ($request->has('text_elements') && is_array($request->text_elements)) {
                 foreach ($request->text_elements as $index => $textElement) {
                     StoryText::create([
@@ -381,12 +366,10 @@ class StoryController extends Controller
         try {
             $user = Auth::user();
 
-            // Check agar user ki story hai
             $userHasStory = Story::where('user_id', $user->id)
                 ->where('created_at', '>=', Carbon::now()->subHours(24))
                 ->exists();
 
-            // Get accepted friends (same as your getFriends logic)
             $friends = Friend::where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
                     ->orWhere('friend_id', $user->id);
@@ -395,12 +378,10 @@ class StoryController extends Controller
                 ->with(['user.profile', 'friend.profile'])
                 ->get();
 
-            // Extract only friend IDs
             $friendIds = $friends->map(function ($item) use ($user) {
                 return $item->user_id === $user->id ? $item->friend_id : $item->user_id;
             });
 
-            // Get stories of friends in last 24 hours
             $friendsStories = Story::whereIn('user_id', $friendIds)
                 ->where('created_at', '>=', Carbon::now()->subHours(24))
                 ->with(['user:id,name', 'user.profile:user_id,profile_photo'])
@@ -409,7 +390,7 @@ class StoryController extends Controller
 
             $response = [];
 
-            // Add user itself if has story
+            // Add user's own story if exists
             if ($userHasStory) {
                 $response[] = [
                     'id' => $user->id,
@@ -419,7 +400,7 @@ class StoryController extends Controller
                 ];
             }
 
-            // Add friends
+            // Add friends' stories
             foreach ($friendsStories as $userId => $stories) {
                 $friend = $stories->first()->user;
 
@@ -445,6 +426,110 @@ class StoryController extends Controller
         }
     }
 
+    public function getUserStories(Request $request, $userId)
+    {
+        try {
+            $stories = Story::where('user_id', $userId)
+                ->where('created_at', '>=', Carbon::now()->subHours(24))
+                ->with([
+                    'texts',
+                    'post.media',
+                    'post.user.profile',
+                    'user.profile'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get();
 
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [],
+                    'message' => 'No stories found for this user'
+                ]);
+            }
+
+            $formattedStories = $stories->map(function ($story) {
+                $storyData = [
+                    'id' => $story->id,
+                    'user_id' => $story->user_id,
+                    'type' => $story->type,
+                    'duration' => $story->duration ?: 5, // Default 5 seconds
+                    'post_id' => $story->post_id,
+                    'media_path' => $story->media_path,
+                    'media_type' => $story->media_type,
+                    'x_position' => $story->x_position,
+                    'y_position' => $story->y_position,
+                    'background_color' => $story->background_color,
+                    'expires_at' => $story->expires_at,
+                    'scale' => $story->scale,
+                    'texts' => $story->texts->map(function ($text) {
+                        return [
+                            'id' => $text->id,
+                            'text_content' => $text->text_content,
+                            'x_position' => $text->x_position ?: 50,
+                            'y_position' => $text->y_position ?: 50,
+                            'font_size' => $text->font_size ?: 24,
+                            'font_color' => $text->font_color ?: '#ffffff',
+                            'font_weight' => $text->font_weight ?: 'normal',
+                            'order_index' => $text->order_index ?: 0,
+                        ];
+                    }),
+                    'created_at' => $story->created_at,
+                    'updated_at' => $story->updated_at,
+                ];
+
+                // Add user info
+                if ($story->user) {
+                    $storyData['user'] = [
+                        'id' => $story->user->id,
+                        'name' => $story->user->name,
+                        'avatar' => optional($story->user->profile)->profile_photo,
+                    ];
+                }
+
+                // Add post info if exists
+                if ($story->post_id && $story->post) {
+                    $storyData['post'] = [
+                        'id' => $story->post->id,
+                        'user_id' => $story->post->user_id,
+                        'content' => $story->post->content,
+                        'type' => $story->post->type,
+                        'visibility' => $story->post->visibility,
+                        'media' => $story->post->media ? $story->post->media->map(function ($media) {
+                            return [
+                                'id' => $media->id,
+                                'type' => $media->type,
+                                'file' => $media->file,
+                            ];
+                        }) : [],
+                    ];
+
+                    // Add post user info
+                    if ($story->post->user) {
+                        $storyData['post']['user'] = [
+                            'id' => $story->post->user->id,
+                            'name' => $story->post->user->name,
+                            'avatar' => optional($story->post->user->profile)->profile_photo,
+                        ];
+                    }
+                }
+
+                return $storyData;
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $formattedStories
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching user stories: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch user stories',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

@@ -38,4 +38,8 @@ class Post extends Model
     {
         return $this->hasOne(Poll::class);
     }
+    public function stories()
+    {
+        return $this->hasMany(Story::class);
+    }
 }

@@ -138,4 +138,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stories/posttext', [App\Http\Controllers\StoryController::class, 'createPostTextStory']);
     Route::post('/stories/postvideo', [App\Http\Controllers\StoryController::class, 'createPostVideoStory']);
     Route::get('/stories', [App\Http\Controllers\StoryController::class, 'getFriendsStories']);
+    Route::get('/user-stories/{userId}', [App\Http\Controllers\StoryController::class, 'getUserStories']);
 });

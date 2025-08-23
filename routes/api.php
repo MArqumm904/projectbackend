@@ -112,6 +112,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/getsavedposts', [App\Http\Controllers\PostController::class, 'getsavedposts']);
 });
 
+// ============================ REQUEST MEMBERSHIP API ================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/requestmembership', [App\Http\Controllers\UserMembershipController::class, 'requestMembership']);
+    Route::post('/getcompanies', [App\Http\Controllers\UserMembershipController::class, 'getCompanies']);
+    Route::post('/getUserMemberships', [App\Http\Controllers\UserMembershipController::class, 'getUserMemberships']);
+    Route::post('/storecompaniesresponses', [App\Http\Controllers\UserMembershipController::class, 'storecompaniesresponses']);
+});
+
+
 // ============================ FRIEND REQUEST API ================================
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/send', [App\Http\Controllers\FriendController::class, 'sendRequest']);
@@ -127,7 +136,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{friendId}', [MessageController::class, 'getMessages']);
     Route::post('/messages', [MessageController::class, 'sendMessage']);
 });
-
 
 
 // ============================ STORIES API ================================
